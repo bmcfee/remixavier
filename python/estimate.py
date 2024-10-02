@@ -46,9 +46,9 @@ def align_over_window(a, b, max_offset, correlation_size, a_center=None, b_cente
         b_center = b.shape[0]/2
     # Avoid array out of bounds
     if a_center - max_offset - correlation_size/2 < 0 or a_center + max_offset + correlation_size/2 > a.shape[0]:
-        raise ValueError, "The window in a around a_center of size max_offset + correlation_size goes out of bounds"
+        raise ValueError("The window in a around a_center of size max_offset + correlation_size goes out of bounds")
     if b_center - correlation_size/2 < 0 or b_center + correlation_size/2 > b.shape[0]:
-        raise ValueError, "The window in b around b_center of size max_offset + correlation_size goes out of bounds"
+        raise ValueError("The window in b around b_center of size max_offset + correlation_size goes out of bounds")
     # Centered on a_center, extract 2*max_offset + correlation_size samples 
     # (so offsets between -max_offset and max_offset)
     a_window = a[a_center - max_offset - correlation_size/2:a_center + max_offset + correlation_size/2]
@@ -90,7 +90,7 @@ def get_best_fs_ratio(a, b, max_drift, steps, max_offset, correlation_size, cent
     corr_max = np.zeros(fs_ratios.shape)
     for n, ratio in enumerate(fs_ratios):
         # Resample b with this fs ratio
-        b_resampled = librosa.resample(b, 1, ratio)
+        b_resampled = librosa.resample(b, orig_sr=1, target_sr=ratio)
         # Compute the max correlation
         _, corr = align_over_window(a, b_resampled, max_offset, correlation_size)
         corr_max[n] = corr.max()
@@ -131,7 +131,7 @@ def apply_offsets_resample(b, offset_locations, offsets):
         # Compute the necessary resampling ratio to compensate for this offset
         ratio = 1 + (-offset + start - current)/(end - start)
         # Resample this portion of the signal, with some padding at the end
-        resampled = librosa.resample(b[start:end + 100], 1, ratio)
+        resampled = librosa.resample(b[start:end + 100], orig_sr=1, target_sr=ratio)
         # Compute length and place the signal
         length = int(end - current - offset)
         b_aligned[current:current + length] = resampled[:length]
@@ -290,7 +290,7 @@ def wiener_enhance(target, accomp, thresh=-6, transit=3, n_fft=2048):
     '''
     target_spec = librosa.stft(target, n_fft=n_fft, hop_length=n_fft/4)
     accomp_spec = librosa.stft(accomp, n_fft=n_fft, hop_length=n_fft/4)
-    spec_ratio = librosa.logamplitude(target_spec) - librosa.logamplitude(accomp_spec)
+    spec_ratio = librosa.amplitude_to_db(target_spec) - librosa.amplitude_to_db(accomp_spec)
     spec_ratio = (spec_ratio - thresh)/transit
     mask = 0.5 + 0.5*(spec_ratio/np.sqrt(1 + spec_ratio**2))
     return librosa.istft(target_spec*mask, hop_length=n_fft/4)
@@ -366,8 +366,8 @@ def align(a, b, fs, correlation_size=4., max_global_offset=2.,
         # Downsample to 2kHz for speed!  Doesn't make a big difference performance-wise
         if fs > 2000:
             fs_ds = 2000
-            a_ds = librosa.resample(a, fs, fs_ds)
-            b_ds =  librosa.resample(b, fs, fs_ds)
+            a_ds = librosa.resample(a, orig_sr=fs, target_sr=fs_ds)
+            b_ds =  librosa.resample(b, orig_sr=fs, target_sr=fs_ds)
         else:
             a_ds = a.copy()
             b_ds = b.copy()
@@ -381,7 +381,7 @@ def align(a, b, fs, correlation_size=4., max_global_offset=2.,
         # Get fine estimate
         fs_ratio = get_best_fs_ratio(a_ds, b_ds, .0001, 200, int(max_skew_offset*fs_ds),
                                      int(correlation_size*fs_ds), fs_ratio)
-        b = librosa.resample(b, 1, fs_ratio)
+        b = librosa.resample(b, orig_sr=1, target_sr=fs_ratio)
 
     # Estimate offset locations every "hop" seconds
     offset_locations, offsets, correlations = get_local_offsets(a, b, int(fs*hop), int(fs*max_local_offset),
@@ -390,7 +390,7 @@ def align(a, b, fs, correlation_size=4., max_global_offset=2.,
     # Remove any big jumps in the offset list
     offsets = remove_outliers(offsets)
     # Adjust source according to these offsets
-    b = apply_offsets_resample(b, offset_locations, offsets)
+    b = apply_offsets_resample(b, orig_sr=offset_locations, target_sr=offsets)
     
     # Make sure they are the same length
     a, b = pad(a, b)

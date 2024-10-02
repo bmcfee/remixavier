@@ -10,10 +10,16 @@ GUI App for running remixavier
 # <codecell>
 
 import sys, os
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+# Hack to migrate from qt4 to qt5
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtCore import pyqtSignal as SIGNAL
+from PyQt5.QtWidgets import *
+
+
 import numpy as np
 import librosa
+import soundfile as sf
 import estimate
 
 # <codecell>
@@ -101,7 +107,7 @@ class AppForm(QMainWindow):
 
     def remixavierFinished( self, finished ):
         if finished:
-            librosa.output.write_wav( self.output_file, self.remixavierInstance.subtracted, self.remixavierInstance.fs )
+            sf.write( self.output_file, self.remixavierInstance.subtracted, self.remixavierInstance.fs )
             self.statusBar().showMessage( 'Done.', 0 )
             self.progressBar.setValue( 1000 )
             self.startStopButton.setEnabled( 1 )
@@ -116,7 +122,8 @@ class AppForm(QMainWindow):
         slider.setMinimum( minimum*scale )
         slider.setMaximum( maximum*scale )
         slider.setValue( default*scale )
-        slider.connect( slider, SIGNAL('valueChanged(int)'), self.updateLabels )
+#        slider.connect( slider, SIGNAL('valueChanged(int)'), self.updateLabels )
+        slider.valueChanged.connect( self.updateLabels )
         return QLabel( name ), slider
 
     # Create main GUI window
@@ -139,7 +146,8 @@ class AppForm(QMainWindow):
         
         # Open button for starting analysis
         self.startStopButton = QPushButton( "&Start" )
-        self.connect(self.startStopButton, SIGNAL( 'clicked()'), self.startStopButtonClicked )
+        self.startStopButton.clicked.connect( self.startStopButtonClicked )
+#        self.connect(self.startStopButton, SIGNAL( 'clicked()'), self.startStopButtonClicked )
         
         # VBox for snippet length controls
         parametersVBox = QVBoxLayout()
@@ -174,12 +182,14 @@ class AppForm(QMainWindow):
         # Shortcut
         openFile.setShortcut('Ctrl+O')
         # Connect open action to show dialog
-        self.connect(openFile, SIGNAL('triggered()'), self.showDialog)
+        #self.connect(openFile, SIGNAL('triggered()'), self.showDialog)
+        openFile.triggered.connect(self.showDialog)
         # Exit (like quit)
         exitAction = QAction('Exit - like quitting', self)
         # Shortcut
         exitAction.setShortcut('Ctrl+E')
-        self.connect(exitAction, SIGNAL('triggered()'), self.exit)
+        exitAction.triggered.connect(self.exit)
+#        self.connect(exitAction, SIGNAL('triggered()'), self.exit)
         
         # Create menubar
         menubar = self.menuBar()
@@ -209,13 +219,13 @@ class AppForm(QMainWindow):
         # Get mixture file name from dialog box
         mix_file = str(QFileDialog.getOpenFileName(self, "Select a mixture file", ".", "Audio Files (*.mp3 *.wav)"))
         # If the user didn't hit cancel
-        if mix_file is not '':
+        if mix_file != '':
             # ... source file
             source_file = str(QFileDialog.getOpenFileName(self, "Select a source file", ".", "Audio Files (*.mp3 *.wav)"))
-            if source_file is not '':
+            if source_file != '':
                 # Where to save the resulting file
                 self.output_file = str(QFileDialog.getSaveFileName(self, "Save file", ".", "Audio Files (*.mp3 *.wav)"))
-                if self.output_file is not '':
+                if self.output_file != '':
                     self.progressBar.reset()
                     self.remixavierInstance.loadNewValues( mix_file, source_file, self.wiener_thresholdSlider.value() )
                     self.remixavierInstance.start()
@@ -231,7 +241,7 @@ def main():
     form = AppForm()
     form.show()
     form.raise_()
-    app.exec_()
+    app.exec()
 
 if __name__ == "__main__":
     main()

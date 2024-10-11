@@ -9,11 +9,11 @@ GUI App for running remixavier
 
 # <codecell>
 
-import sys, os
+import sys
+import os
 # Hack to migrate from qt4 to qt5
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
-from PyQt5.QtCore import pyqtSignal as SIGNAL
 from PyQt5.QtWidgets import *
 
 
@@ -122,7 +122,6 @@ class AppForm(QMainWindow):
         slider.setMinimum( minimum*scale )
         slider.setMaximum( maximum*scale )
         slider.setValue( default*scale )
-#        slider.connect( slider, SIGNAL('valueChanged(int)'), self.updateLabels )
         slider.valueChanged.connect( self.updateLabels )
         return QLabel( name ), slider
 
@@ -147,7 +146,6 @@ class AppForm(QMainWindow):
         # Open button for starting analysis
         self.startStopButton = QPushButton( "&Start" )
         self.startStopButton.clicked.connect( self.startStopButtonClicked )
-#        self.connect(self.startStopButton, SIGNAL( 'clicked()'), self.startStopButtonClicked )
         
         # VBox for snippet length controls
         parametersVBox = QVBoxLayout()
@@ -182,14 +180,12 @@ class AppForm(QMainWindow):
         # Shortcut
         openFile.setShortcut('Ctrl+O')
         # Connect open action to show dialog
-        #self.connect(openFile, SIGNAL('triggered()'), self.showDialog)
         openFile.triggered.connect(self.showDialog)
         # Exit (like quit)
         exitAction = QAction('Exit - like quitting', self)
         # Shortcut
         exitAction.setShortcut('Ctrl+E')
         exitAction.triggered.connect(self.exit)
-#        self.connect(exitAction, SIGNAL('triggered()'), self.exit)
         
         # Create menubar
         menubar = self.menuBar()
